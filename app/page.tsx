@@ -1,7 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+
+const STAR_LABELS = [
+  'If heights scare you, run away! 😱',
+  'Heights alert, proceed with caution! 😨',
+  'Some heights, but manageable 🤔',
+  'A little elevation, but you\'re good! 😊',
+  'Totally chill – no heights to fear! 😎'
+]
 
 export default function Home() {
   const [location, setLocation] = useState('')
@@ -17,6 +25,35 @@ export default function Home() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const mapRef = useRef<HTMLDivElement>(null)
+  const mapInstanceRef = useRef<any>(null)
+
+  const loadMap = async (loc: string) => {
+    if (!mapRef.current) return
+    const { Loader } = await import('@googlemaps/js-api-loader')
+    const loader = new Loader({
+      apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY!,
+      version: 'weekly',
+      libraries: ['places']
+    })
+    const google = await loader.load()
+    const geocoder = new google.maps.Geocoder()
+    geocoder.geocode({ address: loc }, (results: any, status: any) => {
+      if (status === 'OK' && results[0]) {
+        const map = new google.maps.Map(mapRef.current!, {
+          center: results[0].geometry.location,
+          zoom: 12,
+          disableDefaultUI: true,
+          zoomControl: true,
+        })
+        new google.maps.Marker({
+          position: results[0].geometry.location,
+          map,
+        })
+        mapInstanceRef.current = map
+      }
+    })
+  }
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,6 +65,7 @@ export default function Home() {
     setTotalRatings(0)
     setReviews([])
     setFeedback(userEmail ? 'Select stars to rate!' : 'Sign in to rate this location')
+    await loadMap(location.trim())
     await loadLocationData(location.trim())
   }
 
@@ -170,13 +208,13 @@ export default function Home() {
         </div>
       </form>
 
-      <div className="h-48 bg-green-100 flex items-center justify-center text-gray-500 text-sm">
-        {selectedLocation ? `📍 ${selectedLocation}` : 'Map will appear here'}
+      <div ref={mapRef} className="h-48 bg-green-100 flex items-center justify-center text-gray-500 text-sm">
+        {!selectedLocation && <span>Map will appear here</span>}
       </div>
 
       <div className="p-4 bg-white border-b">
         <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Fear rating</p>
-        <div className="flex gap-1 mb-3">
+        <div className="flex gap-1 mb-1">
           {stars.map(s => (
             <button
               key={s}
@@ -187,6 +225,9 @@ export default function Home() {
             </button>
           ))}
         </div>
+        {score > 0 && (
+          <p className="text-xs text-gray-500 mb-2 italic">{STAR_LABELS[score - 1]}</p>
+        )}
         {avgScore !== null && (
           <p className="text-sm text-gray-500 mb-2">
             {stars.map(s => (
@@ -215,56 +256,4 @@ export default function Home() {
             className="w-full border rounded-lg p-2 text-sm h-20 resize-none"
           />
           <div className="flex gap-2 mt-2">
-            <label className="flex-1 border border-dashed rounded-lg p-2 text-xs text-gray-500 text-center cursor-pointer">
-              📷 {imageFile ? imageFile.name.substring(0, 15) + '...' : 'Add image'}
-              <input type="file" accept="image/*" className="hidden" onChange={e => setImageFile(e.target.files?.[0] || null)} />
-            </label>
-            <label className="flex-1 border border-dashed rounded-lg p-2 text-xs text-gray-500 text-center cursor-pointer">
-              🎥 {videoFile ? videoFile.name.substring(0, 15) + '...' : 'Add video'}
-              <input type="file" accept="video/*" className="hidden" onChange={e => setVideoFile(e.target.files?.[0] || null)} />
-            </label>
-          </div>
-          <button
-            onClick={handleSubmitReview}
-            disabled={submitting || (!reviewText && !imageFile && !videoFile)}
-            className="w-full mt-2 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-40"
-          >
-            {submitting ? 'Submitting...' : 'Submit review'}
-          </button>
-        </div>
-      )}
-
-      {reviews.length > 0 && (
-        <div className="p-4">
-          <p className="text-sm font-medium mb-3">Reviews</p>
-          {reviews.map((r: any) => (
-            <div key={r.id} className="bg-white border rounded-xl p-3 mb-3">
-              <div className="flex justify-between items-start mb-1">
-                <span className="text-sm font-medium">{r.user_email.split('@')[0].substring(0, 15)}</span>
-                <span className="text-xs text-gray-400">{new Date(r.created_at).toLocaleDateString('en-GB')}</span>
-              </div>
-              <div className="text-sm mb-1">
-                {stars.map(s => (
-                  <span key={s} className={s <= r.score ? 'text-red-400' : 'text-gray-200'}>★</span>
-                ))}
-              </div>
-              <p className="text-sm text-gray-600">{r.review}</p>
-              <div className="flex gap-2 mt-2">
-                {r.media_url && (
-                  <a href={r.media_url} target="_blank" rel="noopener noreferrer" className="text-xs border rounded px-2 py-1 text-gray-500">
-                    📷 View photo
-                  </a>
-                )}
-                {r.video_url && (
-                  <a href={r.video_url} target="_blank" rel="noopener noreferrer" className="text-xs border rounded px-2 py-1 text-gray-500">
-                    ▶ Watch video
-                  </a>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </main>
-  )
-}
+            <label className="flex-1 border border-dashed rounded-lg p-2
