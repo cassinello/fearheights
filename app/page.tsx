@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const STAR_LABELS = [
@@ -256,4 +256,57 @@ export default function Home() {
             className="w-full border rounded-lg p-2 text-sm h-20 resize-none"
           />
           <div className="flex gap-2 mt-2">
-            <label className="flex-1 border border-dashed rounded-lg p-2
+            <label className="flex-1 border border-dashed rounded-lg p-2 text-xs text-gray-500 text-center cursor-pointer">
+              {imageFile ? imageFile.name.substring(0, 15) + '...' : '📷 Add image'}
+              <input type="file" accept="image/*" className="hidden" onChange={e => setImageFile(e.target.files?.[0] || null)} />
+            </label>
+            <label className="flex-1 border border-dashed rounded-lg p-2 text-xs text-gray-500 text-center cursor-pointer">
+              {videoFile ? videoFile.name.substring(0, 15) + '...' : '🎥 Add video'}
+              <input type="file" accept="video/*" className="hidden" onChange={e => setVideoFile(e.target.files?.[0] || null)} />
+            </label>
+          </div>
+          <button
+            onClick={handleSubmitReview}
+            disabled={submitting || (!reviewText && !imageFile && !videoFile)}
+            className="w-full mt-2 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-40"
+          >
+            {submitting ? 'Submitting...' : 'Submit review'}
+          </button>
+        </div>
+      )}
+
+      {reviews.length > 0 && (
+        <div className="p-4">
+          <p className="text-sm font-medium mb-3">Reviews</p>
+          {reviews.map((r: any) => (
+            <div key={r.id} className="bg-white border rounded-xl p-3 mb-3">
+              <div className="flex justify-between items-start mb-1">
+                <span className="text-sm font-medium">{r.user_email.split('@')[0].substring(0, 15)}</span>
+                <span className="text-xs text-gray-400">{new Date(r.created_at).toLocaleDateString('en-GB')}</span>
+              </div>
+              <div className="text-sm mb-1">
+                {stars.map(s => (
+                  <span key={s} className={s <= r.score ? 'text-red-400' : 'text-gray-200'}>★</span>
+                ))}
+                <span className="text-xs text-gray-400 ml-2 italic">{STAR_LABELS[r.score - 1]}</span>
+              </div>
+              <p className="text-sm text-gray-600">{r.review}</p>
+              <div className="flex gap-2 mt-2">
+                {r.media_url && (
+                  <a href={r.media_url} target="_blank" rel="noopener noreferrer" className="text-xs border rounded px-2 py-1 text-gray-500">
+                    📷 View photo
+                  </a>
+                )}
+                {r.video_url && (
+                  <a href={r.video_url} target="_blank" rel="noopener noreferrer" className="text-xs border rounded px-2 py-1 text-gray-500">
+                    ▶ Watch video
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </main>
+  )
+}
