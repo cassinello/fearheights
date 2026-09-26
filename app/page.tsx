@@ -164,29 +164,30 @@ export default function Home() {
     setFeedback('Search a location to rate it!')
   }
 
+  const getInitial = (email: string) => email.charAt(0).toUpperCase()
+
   const stars = [1, 2, 3, 4, 5]
 
   return (
     <main className="max-w-md mx-auto min-h-screen bg-gray-50">
 
-      {/* Banner */}
-      <div className="relative w-full h-32">
-        <Image src="/banner.JPG" alt="Fear Heights banner" fill style={{ objectFit: 'cover' }} priority />
-      </div>
-
       {/* Header */}
       <header className="bg-[#7b8fc7] px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Image src="/logo.JPG" alt="Fear Heights logo" width={36} height={36} className="rounded-full" />
+        <div className="flex items-center gap-2">
+          <Image src="/logo.JPG" alt="Fear Heights logo" width={28} height={28} className="rounded-full" />
           <div>
-            <h1 className="text-[#f5ede0] text-lg font-semibold leading-tight">Fear Heights</h1>
-            <p className="text-[#f5ede0] text-xs opacity-80">Stay grounded!</p>
+            <h1 className="text-[#f5ede0] text-base font-semibold leading-tight">Fear Heights</h1>
+            <p className="text-[#f5ede0] text-xs opacity-70">Stay grounded!</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <a href="https://x.com/_FearHeights" target="_blank" rel="noopener noreferrer" className="text-[#f5ede0] opacity-70 hover:opacity-100 text-sm font-bold">X</a>
           {userEmail ? (
-            <button onClick={signOut} className="text-[#f5ede0] text-xs opacity-80">{userEmail.split('@')[0].substring(0, 12)} ✓</button>
+            <button onClick={signOut} className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-[#f5ede0] flex items-center justify-center">
+                <span className="text-[#7b8fc7] text-sm font-bold">{getInitial(userEmail)}</span>
+              </div>
+            </button>
           ) : (
             <button onClick={signIn} className="text-[#f5ede0] text-xs border border-[#f5ede0]/40 px-3 py-1.5 rounded-lg">Sign in</button>
           )}
@@ -273,10 +274,15 @@ export default function Home() {
           {reviews.map((r: any) => (
             <div key={r.id} className="bg-white border rounded-xl p-3 mb-3">
               <div className="flex justify-between items-start mb-1">
-                <span className="text-sm font-medium text-gray-900">{r.user_email.split('@')[0].substring(0, 15)}</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-[#7b8fc7] flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">{r.user_email.charAt(0).toUpperCase()}</span>
+                  </div>
+                  <span className="text-sm font-medium text-gray-900">{r.user_email.split('@')[0].substring(0, 15)}</span>
+                </div>
                 <span className="text-xs text-gray-400">{new Date(r.created_at).toLocaleDateString('en-GB')}</span>
               </div>
-              <div className="text-sm mb-1">
+              <div className="text-sm mb-1 mt-1">
                 {stars.map(s => <span key={s} className={s <= r.score ? 'text-[#7b8fc7]' : 'text-gray-200'}>★</span>)}
                 <span className="text-xs text-gray-400 ml-2 italic">{STAR_LABELS[r.score - 1]}</span>
               </div>
