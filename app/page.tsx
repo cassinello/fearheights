@@ -7,8 +7,8 @@ const STAR_LABELS = [
   'If heights scare you, run away! 😱',
   'Heights alert, proceed with caution! 😨',
   'Some heights, but manageable 🤔',
-  'A little elevation, but you\'re good! 😊',
-  'Totally chill – no heights to fear! 😎'
+  "A little elevation, but you're good! 😊",
+  'Totally chill, no heights to fear! 😎'
 ]
 
 export default function Home() {
