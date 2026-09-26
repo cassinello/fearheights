@@ -27,12 +27,10 @@ export default function Home() {
   const [submitting, setSubmitting] = useState(false)
   const [mapSrc, setMapSrc] = useState<string | null>(null)
 
-  // Recordar usuario en localStorage
   useEffect(() => {
     const saved = localStorage.getItem('fh_email')
     if (saved) {
       setUserEmail(saved)
-      setFeedback('Search a location to rate it!')
     }
   }, [])
 
@@ -169,7 +167,6 @@ export default function Home() {
 
   return (
     <main className="max-w-md mx-auto min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-gray-900 px-4 py-3 flex items-center justify-between">
         <h1 className="text-white text-xl font-medium">
           Fear<span className="text-red-400">Heights</span>
@@ -179,9 +176,9 @@ export default function Home() {
             href="https://x.com/_FearHeights"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-gray-400 hover:text-white text-sm"
+            className="text-gray-400 hover:text-white text-sm font-bold"
           >
-            𝕏
+            X
           </a>
           {userEmail ? (
             <button onClick={signOut} className="text-green-400 text-sm">
@@ -195,7 +192,6 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Search */}
       <form onSubmit={handleSearch} className="p-4 bg-white border-b">
         <div className="flex gap-2">
           <input
@@ -210,7 +206,6 @@ export default function Home() {
         </div>
       </form>
 
-      {/* Map — solo cuando hay búsqueda */}
       {mapSrc && (
         <div className="h-48">
           <iframe
@@ -224,15 +219,15 @@ export default function Home() {
         </div>
       )}
 
-      {/* Rating */}
       <div className="p-4 bg-white border-b">
         <p className="text-xs text-gray-500 uppercase tracking-wide mb-3">Fear rating</p>
 
-        {/* Tabla de referencia de estrellas */}
         <div className="mb-3 rounded-lg bg-gray-50 border border-gray-100 p-3">
           {STAR_LABELS.map((label, i) => (
             <div key={i} className="flex items-center gap-2 py-0.5">
-              <span className="text-red-400 text-sm w-20">{'★'.repeat(i + 1)}{'☆'.repeat(4 - i)}</span>
+              <span className="text-red-400 text-sm w-20">
+                {'★'.repeat(i + 1)}{'☆'.repeat(4 - i)}
+              </span>
               <span className="text-xs text-gray-500">{label}</span>
             </div>
           ))}
@@ -270,7 +265,6 @@ export default function Home() {
         <p className="text-sm text-center mt-2 text-gray-500">{feedback}</p>
       </div>
 
-      {/* Review form */}
       {hasVoted && userEmail && (
         <div className="p-4 bg-white border-b">
           <p className="text-sm font-medium mb-2">Share your experience</p>
@@ -300,7 +294,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Reviews */}
       {reviews.length > 0 && (
         <div className="p-4">
           <p className="text-sm font-medium mb-3">Reviews</p>
