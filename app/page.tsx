@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const STAR_LABELS = [
@@ -25,32 +25,7 @@ export default function Home() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const mapRef = useRef<HTMLDivElement>(null)
-
-  const loadMap = async (loc: string) => {
-    if (!mapRef.current) return
-    const { Loader } = await import('@googlemaps/js-api-loader')
-    const loader = new Loader({
-      apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY!,
-      version: 'weekly',
-    })
-    await loader.importLibrary('maps')
-    const geocoder = new (window as any).google.maps.Geocoder()
-    geocoder.geocode({ address: loc }, (results: any, status: any) => {
-      if (status === 'OK' && results[0]) {
-        new (window as any).google.maps.Map(mapRef.current!, {
-          center: results[0].geometry.location,
-          zoom: 12,
-          disableDefaultUI: true,
-          zoomControl: true,
-        })
-        new (window as any).google.maps.Marker({
-          position: results[0].geometry.location,
-          map: mapRef.current,
-        })
-      }
-    })
-  }
+  const [mapSrc, setMapSrc] = useState<string | null>(null)
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -62,7 +37,7 @@ export default function Home() {
     setTotalRatings(0)
     setReviews([])
     setFeedback(userEmail ? 'Select stars to rate!' : 'Sign in to rate this location')
-    await loadMap(location.trim())
+    setMapSrc(`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}&q=${encodeURIComponent(location.trim())}&zoom=12`)
     await loadLocationData(location.trim())
   }
 
@@ -205,8 +180,21 @@ export default function Home() {
         </div>
       </form>
 
-      <div ref={mapRef} className="h-48 bg-green-100 flex items-center justify-center text-gray-500 text-sm">
-        {!selectedLocation && <span>Map will appear here</span>}
+      <div className="h-48 bg-green-100">
+        {mapSrc ? (
+          <iframe
+            src={mapSrc}
+            width="100%"
+            height="100%"
+            style={{ border: 0 }}
+            allowFullScreen
+            loading="lazy"
+          />
+        ) : (
+          <div className="h-full flex items-center justify-center text-gray-500 text-sm">
+            Map will appear here
+          </div>
+        )}
       </div>
 
       <div className="p-4 bg-white border-b">
