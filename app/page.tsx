@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const STAR_LABELS = [
@@ -26,6 +26,15 @@ export default function Home() {
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [mapSrc, setMapSrc] = useState<string | null>(null)
+
+  // Recordar usuario en localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('fh_email')
+    if (saved) {
+      setUserEmail(saved)
+      setFeedback('Search a location to rate it!')
+    }
+  }, [])
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -145,34 +154,55 @@ export default function Home() {
     const email = prompt('Enter your email:')
     if (email) {
       setUserEmail(email)
+      localStorage.setItem('fh_email', email)
       setFeedback(selectedLocation ? 'Select stars to rate!' : 'Search a location to rate it!')
     }
+  }
+
+  const signOut = () => {
+    setUserEmail(null)
+    localStorage.removeItem('fh_email')
+    setFeedback('Search a location to rate it!')
   }
 
   const stars = [1, 2, 3, 4, 5]
 
   return (
     <main className="max-w-md mx-auto min-h-screen bg-gray-50">
-      <header className="bg-gray-900 px-4 py-4 flex items-center justify-between">
+      {/* Header */}
+      <header className="bg-gray-900 px-4 py-3 flex items-center justify-between">
         <h1 className="text-white text-xl font-medium">
           Fear<span className="text-red-400">Heights</span>
         </h1>
-        {userEmail ? (
-          <span className="text-green-400 text-sm">{userEmail.split('@')[0].substring(0, 15)} ✓</span>
-        ) : (
-          <button onClick={signIn} className="text-white text-sm border border-white/30 px-3 py-1.5 rounded-lg">
-            Sign in
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          
+            href="https://x.com/_FearHeights"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-400 hover:text-white text-sm"
+          >
+            𝕏
+          </a>
+          {userEmail ? (
+            <button onClick={signOut} className="text-green-400 text-sm">
+              {userEmail.split('@')[0].substring(0, 12)} ✓
+            </button>
+          ) : (
+            <button onClick={signIn} className="text-white text-sm border border-white/30 px-3 py-1.5 rounded-lg">
+              Sign in
+            </button>
+          )}
+        </div>
       </header>
 
+      {/* Search */}
       <form onSubmit={handleSearch} className="p-4 bg-white border-b">
         <div className="flex gap-2">
           <input
             value={location}
             onChange={e => setLocation(e.target.value)}
             placeholder="Search a location..."
-            className="flex-1 px-3 py-2 border rounded-lg text-sm"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white placeholder-gray-400"
           />
           <button type="submit" className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm">
             Search
@@ -180,8 +210,9 @@ export default function Home() {
         </div>
       </form>
 
-      <div className="h-48 bg-green-100">
-        {mapSrc ? (
+      {/* Map — solo cuando hay búsqueda */}
+      {mapSrc && (
+        <div className="h-48">
           <iframe
             src={mapSrc}
             width="100%"
@@ -190,15 +221,23 @@ export default function Home() {
             allowFullScreen
             loading="lazy"
           />
-        ) : (
-          <div className="h-full flex items-center justify-center text-gray-500 text-sm">
-            Map will appear here
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
+      {/* Rating */}
       <div className="p-4 bg-white border-b">
-        <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Fear rating</p>
+        <p className="text-xs text-gray-500 uppercase tracking-wide mb-3">Fear rating</p>
+
+        {/* Tabla de referencia de estrellas */}
+        <div className="mb-3 rounded-lg bg-gray-50 border border-gray-100 p-3">
+          {STAR_LABELS.map((label, i) => (
+            <div key={i} className="flex items-center gap-2 py-0.5">
+              <span className="text-red-400 text-sm w-20">{'★'.repeat(i + 1)}{'☆'.repeat(4 - i)}</span>
+              <span className="text-xs text-gray-500">{label}</span>
+            </div>
+          ))}
+        </div>
+
         <div className="flex gap-1 mb-1">
           {stars.map(s => (
             <button
@@ -231,6 +270,7 @@ export default function Home() {
         <p className="text-sm text-center mt-2 text-gray-500">{feedback}</p>
       </div>
 
+      {/* Review form */}
       {hasVoted && userEmail && (
         <div className="p-4 bg-white border-b">
           <p className="text-sm font-medium mb-2">Share your experience</p>
@@ -238,14 +278,14 @@ export default function Home() {
             value={reviewText}
             onChange={e => setReviewText(e.target.value)}
             placeholder="What was it like?"
-            className="w-full border rounded-lg p-2 text-sm h-20 resize-none"
+            className="w-full border border-gray-300 rounded-lg p-2 text-sm h-20 resize-none text-gray-900"
           />
           <div className="flex gap-2 mt-2">
-            <label className="flex-1 border border-dashed rounded-lg p-2 text-xs text-gray-500 text-center cursor-pointer">
+            <label className="flex-1 border border-dashed border-gray-300 rounded-lg p-2 text-xs text-gray-500 text-center cursor-pointer">
               {imageFile ? imageFile.name.substring(0, 15) + '...' : '📷 Add image'}
               <input type="file" accept="image/*" className="hidden" onChange={e => setImageFile(e.target.files?.[0] || null)} />
             </label>
-            <label className="flex-1 border border-dashed rounded-lg p-2 text-xs text-gray-500 text-center cursor-pointer">
+            <label className="flex-1 border border-dashed border-gray-300 rounded-lg p-2 text-xs text-gray-500 text-center cursor-pointer">
               {videoFile ? videoFile.name.substring(0, 15) + '...' : '🎥 Add video'}
               <input type="file" accept="video/*" className="hidden" onChange={e => setVideoFile(e.target.files?.[0] || null)} />
             </label>
@@ -260,13 +300,14 @@ export default function Home() {
         </div>
       )}
 
+      {/* Reviews */}
       {reviews.length > 0 && (
         <div className="p-4">
           <p className="text-sm font-medium mb-3">Reviews</p>
           {reviews.map((r: any) => (
             <div key={r.id} className="bg-white border rounded-xl p-3 mb-3">
               <div className="flex justify-between items-start mb-1">
-                <span className="text-sm font-medium">{r.user_email.split('@')[0].substring(0, 15)}</span>
+                <span className="text-sm font-medium text-gray-900">{r.user_email.split('@')[0].substring(0, 15)}</span>
                 <span className="text-xs text-gray-400">{new Date(r.created_at).toLocaleDateString('en-GB')}</span>
               </div>
               <div className="text-sm mb-1">
