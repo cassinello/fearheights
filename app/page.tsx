@@ -29,9 +29,7 @@ export default function Home() {
 
   useEffect(() => {
     const saved = localStorage.getItem('fh_email')
-    if (saved) {
-      setUserEmail(saved)
-    }
+    if (saved) setUserEmail(saved)
   }, [])
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -168,26 +166,13 @@ export default function Home() {
   return (
     <main className="max-w-md mx-auto min-h-screen bg-gray-50">
       <header className="bg-gray-900 px-4 py-3 flex items-center justify-between">
-        <h1 className="text-white text-xl font-medium">
-          Fear<span className="text-red-400">Heights</span>
-        </h1>
+        <h1 className="text-white text-xl font-medium">Fear<span className="text-red-400">Heights</span></h1>
         <div className="flex items-center gap-3">
-          
-            href="https://x.com/_FearHeights"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-gray-400 hover:text-white text-sm font-bold"
-          >
-            X
-          </a>
+          <a href="https://x.com/_FearHeights" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white text-sm font-bold">X</a>
           {userEmail ? (
-            <button onClick={signOut} className="text-green-400 text-sm">
-              {userEmail.split('@')[0].substring(0, 12)} ✓
-            </button>
+            <button onClick={signOut} className="text-green-400 text-sm">{userEmail.split('@')[0].substring(0, 12)} ✓</button>
           ) : (
-            <button onClick={signIn} className="text-white text-sm border border-white/30 px-3 py-1.5 rounded-lg">
-              Sign in
-            </button>
+            <button onClick={signIn} className="text-white text-sm border border-white/30 px-3 py-1.5 rounded-lg">Sign in</button>
           )}
         </div>
       </header>
@@ -200,80 +185,46 @@ export default function Home() {
             placeholder="Search a location..."
             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white placeholder-gray-400"
           />
-          <button type="submit" className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm">
-            Search
-          </button>
+          <button type="submit" className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm">Search</button>
         </div>
       </form>
 
       {mapSrc && (
         <div className="h-48">
-          <iframe
-            src={mapSrc}
-            width="100%"
-            height="100%"
-            style={{ border: 0 }}
-            allowFullScreen
-            loading="lazy"
-          />
+          <iframe src={mapSrc} width="100%" height="100%" style={{ border: 0 }} allowFullScreen loading="lazy" />
         </div>
       )}
 
       <div className="p-4 bg-white border-b">
         <p className="text-xs text-gray-500 uppercase tracking-wide mb-3">Fear rating</p>
-
         <div className="mb-3 rounded-lg bg-gray-50 border border-gray-100 p-3">
           {STAR_LABELS.map((label, i) => (
             <div key={i} className="flex items-center gap-2 py-0.5">
-              <span className="text-red-400 text-sm w-20">
-                {'★'.repeat(i + 1)}{'☆'.repeat(4 - i)}
-              </span>
+              <span className="text-red-400 text-sm w-20">{'★'.repeat(i + 1)}{'☆'.repeat(4 - i)}</span>
               <span className="text-xs text-gray-500">{label}</span>
             </div>
           ))}
         </div>
-
         <div className="flex gap-1 mb-1">
           {stars.map(s => (
-            <button
-              key={s}
-              onClick={() => userEmail && selectedLocation && setScore(s)}
-              className={`text-3xl transition-transform hover:scale-110 ${s <= score ? 'text-red-400' : 'text-gray-200'}`}
-            >
-              ★
-            </button>
+            <button key={s} onClick={() => userEmail && selectedLocation && setScore(s)} className={`text-3xl transition-transform hover:scale-110 ${s <= score ? 'text-red-400' : 'text-gray-200'}`}>★</button>
           ))}
         </div>
-        {score > 0 && (
-          <p className="text-xs text-gray-500 mb-2 italic">{STAR_LABELS[score - 1]}</p>
-        )}
+        {score > 0 && <p className="text-xs text-gray-500 mb-2 italic">{STAR_LABELS[score - 1]}</p>}
         {avgScore !== null && (
           <p className="text-sm text-gray-500 mb-2">
-            {stars.map(s => (
-              <span key={s} className={s <= Math.round(avgScore) ? 'text-red-400' : 'text-gray-200'}>★</span>
-            ))}
+            {stars.map(s => <span key={s} className={s <= Math.round(avgScore) ? 'text-red-400' : 'text-gray-200'}>★</span>)}
             {' '}{avgScore} · {totalRatings} ratings
           </p>
         )}
-        <button
-          onClick={handleRate}
-          disabled={!score || !userEmail || !selectedLocation}
-          className="w-full py-3 bg-red-400 text-white rounded-lg font-medium disabled:opacity-40"
-        >
-          Rate!
-        </button>
+        <button onClick={handleRate} disabled={!score || !userEmail || !selectedLocation} className="w-full py-3 bg-red-400 text-white rounded-lg font-medium disabled:opacity-40">Rate!</button>
         <p className="text-sm text-center mt-2 text-gray-500">{feedback}</p>
       </div>
 
       {hasVoted && userEmail && (
         <div className="p-4 bg-white border-b">
           <p className="text-sm font-medium mb-2">Share your experience</p>
-          <textarea
-            value={reviewText}
-            onChange={e => setReviewText(e.target.value)}
-            placeholder="What was it like?"
-            className="w-full border border-gray-300 rounded-lg p-2 text-sm h-20 resize-none text-gray-900"
-          />
+          <textarea value={reviewText} onChange={e => setReviewText(e.target.value)} placeholder="What was it like?" className="w-full border border-gray-300 rounded-lg p-2 text-sm h-20 resize-none text-gray-900" />
           <div className="flex gap-2 mt-2">
             <label className="flex-1 border border-dashed border-gray-300 rounded-lg p-2 text-xs text-gray-500 text-center cursor-pointer">
               {imageFile ? imageFile.name.substring(0, 15) + '...' : '📷 Add image'}
@@ -284,11 +235,7 @@ export default function Home() {
               <input type="file" accept="video/*" className="hidden" onChange={e => setVideoFile(e.target.files?.[0] || null)} />
             </label>
           </div>
-          <button
-            onClick={handleSubmitReview}
-            disabled={submitting || (!reviewText && !imageFile && !videoFile)}
-            className="w-full mt-2 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-40"
-          >
+          <button onClick={handleSubmitReview} disabled={submitting || (!reviewText && !imageFile && !videoFile)} className="w-full mt-2 py-2 bg-gray-900 text-white rounded-lg text-sm disabled:opacity-40">
             {submitting ? 'Submitting...' : 'Submit review'}
           </button>
         </div>
@@ -304,23 +251,13 @@ export default function Home() {
                 <span className="text-xs text-gray-400">{new Date(r.created_at).toLocaleDateString('en-GB')}</span>
               </div>
               <div className="text-sm mb-1">
-                {stars.map(s => (
-                  <span key={s} className={s <= r.score ? 'text-red-400' : 'text-gray-200'}>★</span>
-                ))}
+                {stars.map(s => <span key={s} className={s <= r.score ? 'text-red-400' : 'text-gray-200'}>★</span>)}
                 <span className="text-xs text-gray-400 ml-2 italic">{STAR_LABELS[r.score - 1]}</span>
               </div>
               <p className="text-sm text-gray-600">{r.review}</p>
               <div className="flex gap-2 mt-2">
-                {r.media_url && (
-                  <a href={r.media_url} target="_blank" rel="noopener noreferrer" className="text-xs border rounded px-2 py-1 text-gray-500">
-                    📷 View photo
-                  </a>
-                )}
-                {r.video_url && (
-                  <a href={r.video_url} target="_blank" rel="noopener noreferrer" className="text-xs border rounded px-2 py-1 text-gray-500">
-                    ▶ Watch video
-                  </a>
-                )}
+                {r.media_url && <a href={r.media_url} target="_blank" rel="noopener noreferrer" className="text-xs border rounded px-2 py-1 text-gray-500">📷 View photo</a>}
+                {r.video_url && <a href={r.video_url} target="_blank" rel="noopener noreferrer" className="text-xs border rounded px-2 py-1 text-gray-500">▶ Watch video</a>}
               </div>
             </div>
           ))}
