@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 
 const STAR_LABELS = [
@@ -175,7 +174,11 @@ export default function Home() {
       <header className="bg-[#7b8fc7] px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Image src="/logo.JPG" alt="Fear Heights logo" width={48} height={48} className="rounded-full border-2 border-[#f5ede0]/40" />
+            <img
+              src="/logo.JPG"
+              alt="Fear Heights logo"
+              style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '50%', border: '2px solid rgba(245,237,224,0.5)' }}
+            />
             <div>
               <h1 className="text-[#f5ede0] text-lg font-semibold leading-tight">Fear Heights</h1>
               <p className="text-[#f5ede0] text-xs opacity-70">Stay grounded!</p>
@@ -188,9 +191,9 @@ export default function Home() {
               </svg>
             </a>
             {userEmail ? (
-              <button onClick={signOut} className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-[#f5ede0] flex items-center justify-center">
-                  <span className="text-[#7b8fc7] text-sm font-bold">{getInitial(userEmail)}</span>
+              <button onClick={signOut} className="flex items-center">
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#f5ede0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ color: '#7b8fc7', fontWeight: 'bold', fontSize: '16px' }}>{getInitial(userEmail)}</span>
                 </div>
               </button>
             ) : (
@@ -277,8 +280,8 @@ export default function Home() {
             <div key={r.id} className="bg-white border rounded-xl p-3 mb-3">
               <div className="flex justify-between items-start mb-1">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-[#7b8fc7] flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">{r.user_email.charAt(0).toUpperCase()}</span>
+                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#7b8fc7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ color: 'white', fontSize: '11px', fontWeight: 'bold' }}>{r.user_email.charAt(0).toUpperCase()}</span>
                   </div>
                   <span className="text-sm font-medium text-gray-900">{r.user_email.split('@')[0].substring(0, 15)}</span>
                 </div>
