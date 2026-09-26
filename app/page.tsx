@@ -171,13 +171,13 @@ export default function Home() {
 
       {/* Banner */}
       <div className="relative w-full h-32">
-        <Image src="/banner.jpg" alt="Fear Heights banner" fill style={{ objectFit: 'cover' }} priority />
+        <Image src="/banner.JPG" alt="Fear Heights banner" fill style={{ objectFit: 'cover' }} priority />
       </div>
 
       {/* Header */}
       <header className="bg-[#7b8fc7] px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Image src="/logo.jpg" alt="Fear Heights logo" width={36} height={36} className="rounded-full" />
+          <Image src="/logo.JPG" alt="Fear Heights logo" width={36} height={36} className="rounded-full" />
           <div>
             <h1 className="text-[#f5ede0] text-lg font-semibold leading-tight">Fear Heights</h1>
             <p className="text-[#f5ede0] text-xs opacity-80">Stay grounded!</p>
