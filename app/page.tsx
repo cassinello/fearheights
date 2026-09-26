@@ -26,7 +26,6 @@ export default function Home() {
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const mapRef = useRef<HTMLDivElement>(null)
-  const mapInstanceRef = useRef<any>(null)
 
   const loadMap = async (loc: string) => {
     if (!mapRef.current) return
@@ -34,23 +33,21 @@ export default function Home() {
     const loader = new Loader({
       apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY!,
       version: 'weekly',
-      libraries: ['places']
     })
-    const google = await loader.load()
-    const geocoder = new google.maps.Geocoder()
+    await loader.importLibrary('maps')
+    const geocoder = new (window as any).google.maps.Geocoder()
     geocoder.geocode({ address: loc }, (results: any, status: any) => {
       if (status === 'OK' && results[0]) {
-        const map = new google.maps.Map(mapRef.current!, {
+        new (window as any).google.maps.Map(mapRef.current!, {
           center: results[0].geometry.location,
           zoom: 12,
           disableDefaultUI: true,
           zoomControl: true,
         })
-        new google.maps.Marker({
+        new (window as any).google.maps.Marker({
           position: results[0].geometry.location,
-          map,
+          map: mapRef.current,
         })
-        mapInstanceRef.current = map
       }
     })
   }
