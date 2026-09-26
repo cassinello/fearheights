@@ -172,34 +172,36 @@ export default function Home() {
     <main className="max-w-md mx-auto min-h-screen bg-gray-50">
 
       {/* Header */}
-      <header className="bg-[#7b8fc7] px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Image src="/logo.JPG" alt="Fear Heights logo" width={28} height={28} className="rounded-full" />
-          <div>
-            <h1 className="text-[#f5ede0] text-base font-semibold leading-tight">Fear Heights</h1>
-            <p className="text-[#f5ede0] text-xs opacity-70">Stay grounded!</p>
+      <header className="bg-[#7b8fc7] px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Image src="/logo.JPG" alt="Fear Heights logo" width={48} height={48} className="rounded-full border-2 border-[#f5ede0]/40" />
+            <div>
+              <h1 className="text-[#f5ede0] text-lg font-semibold leading-tight">Fear Heights</h1>
+              <p className="text-[#f5ede0] text-xs opacity-70">Stay grounded!</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <a href="https://x.com/_FearHeights" target="_blank" rel="noopener noreferrer" className="text-[#f5ede0] opacity-70 hover:opacity-100">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.738l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+            </a>
+            {userEmail ? (
+              <button onClick={signOut} className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-[#f5ede0] flex items-center justify-center">
+                  <span className="text-[#7b8fc7] text-sm font-bold">{getInitial(userEmail)}</span>
+                </div>
+              </button>
+            ) : (
+              <button onClick={signIn} className="text-[#f5ede0] text-xs border border-[#f5ede0]/40 px-3 py-1.5 rounded-lg">Sign in</button>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <a href="https://x.com/_FearHeights" target="_blank" rel="noopener noreferrer" className="text-[#f5ede0] opacity-70 hover:opacity-100 text-sm font-bold">X</a>
-          {userEmail ? (
-            <button onClick={signOut} className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-[#f5ede0] flex items-center justify-center">
-                <span className="text-[#7b8fc7] text-sm font-bold">{getInitial(userEmail)}</span>
-              </div>
-            </button>
-          ) : (
-            <button onClick={signIn} className="text-[#f5ede0] text-xs border border-[#f5ede0]/40 px-3 py-1.5 rounded-lg">Sign in</button>
-          )}
-        </div>
-      </header>
-
-      {/* Tagline */}
-      <div className="bg-[#7b8fc7] px-4 pb-3">
-        <p className="text-[#f5ede0] text-xs opacity-90 leading-relaxed">
+        <p className="text-[#f5ede0] text-xs opacity-80 leading-relaxed mt-2">
           Rate places by how much they scare you. 😱 Search any location, leave your vertigo rating & reviews. Do you dare? 👉
         </p>
-      </div>
+      </header>
 
       {/* Search */}
       <form onSubmit={handleSearch} className="p-4 bg-white border-b">
