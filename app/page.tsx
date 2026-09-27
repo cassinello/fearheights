@@ -31,7 +31,6 @@ export default function Home() {
   const [mapSrc, setMapSrc] = useState<string>(WORLD_MAP_SRC)
 
   useEffect(() => {
-    // Comprobar sesión activa
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUserEmail(session.user.email || null)
@@ -39,7 +38,6 @@ export default function Home() {
       }
     })
 
-    // Escuchar cambios de sesión
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUserEmail(session.user.email || null)
@@ -170,9 +168,7 @@ export default function Home() {
   const signIn = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: window.location.origin
-      }
+      options: { redirectTo: window.location.origin }
     })
   }
 
@@ -184,7 +180,6 @@ export default function Home() {
   }
 
   const getInitial = (email: string) => email.charAt(0).toUpperCase()
-
   const stars = [1, 2, 3, 4, 5]
 
   return (
@@ -194,11 +189,7 @@ export default function Home() {
       <header className="bg-[#7b8fc7] px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img
-              src="/logo.JPG"
-              alt="Fear Heights logo"
-              style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '50%', border: '2px solid rgba(245,237,224,0.5)' }}
-            />
+            <img src="/logo.JPG" alt="Fear Heights logo" style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: '50%', border: '2px solid rgba(245,237,224,0.5)' }} />
             <div>
               <h1 className="text-[#f5ede0] text-lg font-semibold leading-tight">Fear Heights</h1>
               <p className="text-[#f5ede0] text-xs opacity-70">Stay grounded!</p>
@@ -211,7 +202,7 @@ export default function Home() {
               </svg>
             </a>
             {userEmail ? (
-              <button onClick={signOut} className="flex items-center">
+              <button onClick={signOut}>
                 {userAvatar ? (
                   <img src={userAvatar} alt="avatar" style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid rgba(245,237,224,0.5)' }} />
                 ) : (
@@ -222,7 +213,7 @@ export default function Home() {
               </button>
             ) : (
               <button onClick={signIn} className="text-[#f5ede0] text-xs border border-[#f5ede0]/40 px-3 py-1.5 rounded-lg flex items-center gap-1">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                <svg viewBox="0 0 24 24" width="14" height="14">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                   <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
                   <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
@@ -259,11 +250,23 @@ export default function Home() {
       {/* Rating */}
       <div className="p-4 bg-white border-b">
         <p className="text-xs text-gray-500 uppercase tracking-wide mb-3">Fear rating</p>
-        <div className="flex gap-1 mb-2">
-          {stars.map(s => (
-            <button key={s} onClick={() => userEmail && selectedLocation && setScore(s)} className={`text-3xl transition-transform hover:scale-110 ${s <= score ? 'text-[#7b8fc7]' : 'text-gray-200'}`}>★</button>
-          ))}
+
+        {/* Stars + Rate button in same row */}
+        <div className="flex items-center gap-3 mb-1">
+          <div className="flex gap-1">
+            {stars.map(s => (
+              <button key={s} onClick={() => userEmail && selectedLocation && setScore(s)} className={`text-3xl transition-transform hover:scale-110 ${s <= score ? 'text-[#7b8fc7]' : 'text-gray-200'}`}>★</button>
+            ))}
+          </div>
+          <button
+            onClick={handleRate}
+            disabled={!score || !userEmail || !selectedLocation}
+            className="px-4 py-2 bg-[#7b8fc7] text-white rounded-lg text-sm font-medium disabled:opacity-40 whitespace-nowrap"
+          >
+            Rate!
+          </button>
         </div>
+
         {score > 0 && <p className="text-xs text-gray-500 mb-2 italic">{STAR_LABELS[score - 1]}</p>}
         {avgScore !== null && (
           <p className="text-sm text-gray-500 mb-2">
@@ -271,8 +274,8 @@ export default function Home() {
             {' '}{avgScore} · {totalRatings} ratings
           </p>
         )}
-        <button onClick={handleRate} disabled={!score || !userEmail || !selectedLocation} className="w-full py-3 bg-[#7b8fc7] text-white rounded-lg font-medium disabled:opacity-40 mb-3">Rate!</button>
         <p className="text-sm text-center mb-3 text-gray-500">{feedback}</p>
+
         <div className="rounded-lg bg-gray-50 border border-gray-100 p-3">
           {STAR_LABELS.map((label, i) => (
             <div key={i} className="flex items-center gap-2 py-0.5">
