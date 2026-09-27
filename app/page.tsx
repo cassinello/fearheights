@@ -18,6 +18,7 @@ export default function Home() {
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null)
   const [score, setScore] = useState(0)
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [userAvatar, setUserAvatar] = useState<string | null>(null)
   const [hasVoted, setHasVoted] = useState(false)
   const [feedback, setFeedback] = useState('Search a location to rate it!')
   const [avgScore, setAvgScore] = useState<number | null>(null)
@@ -30,8 +31,26 @@ export default function Home() {
   const [mapSrc, setMapSrc] = useState<string>(WORLD_MAP_SRC)
 
   useEffect(() => {
-    const saved = localStorage.getItem('fh_email')
-    if (saved) setUserEmail(saved)
+    // Comprobar sesión activa
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUserEmail(session.user.email || null)
+        setUserAvatar(session.user.user_metadata?.avatar_url || null)
+      }
+    })
+
+    // Escuchar cambios de sesión
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUserEmail(session.user.email || null)
+        setUserAvatar(session.user.user_metadata?.avatar_url || null)
+      } else {
+        setUserEmail(null)
+        setUserAvatar(null)
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -148,18 +167,19 @@ export default function Home() {
     await loadLocationData(selectedLocation)
   }
 
-  const signIn = () => {
-    const email = prompt('Enter your email:')
-    if (email) {
-      setUserEmail(email)
-      localStorage.setItem('fh_email', email)
-      setFeedback(selectedLocation ? 'Select stars to rate!' : 'Search a location to rate it!')
-    }
+  const signIn = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin
+      }
+    })
   }
 
-  const signOut = () => {
+  const signOut = async () => {
+    await supabase.auth.signOut()
     setUserEmail(null)
-    localStorage.removeItem('fh_email')
+    setUserAvatar(null)
     setFeedback('Search a location to rate it!')
   }
 
@@ -192,12 +212,24 @@ export default function Home() {
             </a>
             {userEmail ? (
               <button onClick={signOut} className="flex items-center">
-                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#f5ede0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ color: '#7b8fc7', fontWeight: 'bold', fontSize: '16px' }}>{getInitial(userEmail)}</span>
-                </div>
+                {userAvatar ? (
+                  <img src={userAvatar} alt="avatar" style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid rgba(245,237,224,0.5)' }} />
+                ) : (
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#f5ede0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ color: '#7b8fc7', fontWeight: 'bold', fontSize: '16px' }}>{getInitial(userEmail)}</span>
+                  </div>
+                )}
               </button>
             ) : (
-              <button onClick={signIn} className="text-[#f5ede0] text-xs border border-[#f5ede0]/40 px-3 py-1.5 rounded-lg">Sign in</button>
+              <button onClick={signIn} className="text-[#f5ede0] text-xs border border-[#f5ede0]/40 px-3 py-1.5 rounded-lg flex items-center gap-1">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                Sign in
+              </button>
             )}
           </div>
         </div>
@@ -227,15 +259,7 @@ export default function Home() {
       {/* Rating */}
       <div className="p-4 bg-white border-b">
         <p className="text-xs text-gray-500 uppercase tracking-wide mb-3">Fear rating</p>
-        <div className="mb-3 rounded-lg bg-gray-50 border border-gray-100 p-3">
-          {STAR_LABELS.map((label, i) => (
-            <div key={i} className="flex items-center gap-2 py-0.5">
-              <span className="text-[#7b8fc7] text-sm w-20">{'★'.repeat(i + 1)}{'☆'.repeat(4 - i)}</span>
-              <span className="text-xs text-gray-500">{label}</span>
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-1 mb-1">
+        <div className="flex gap-1 mb-2">
           {stars.map(s => (
             <button key={s} onClick={() => userEmail && selectedLocation && setScore(s)} className={`text-3xl transition-transform hover:scale-110 ${s <= score ? 'text-[#7b8fc7]' : 'text-gray-200'}`}>★</button>
           ))}
@@ -247,8 +271,16 @@ export default function Home() {
             {' '}{avgScore} · {totalRatings} ratings
           </p>
         )}
-        <button onClick={handleRate} disabled={!score || !userEmail || !selectedLocation} className="w-full py-3 bg-[#7b8fc7] text-white rounded-lg font-medium disabled:opacity-40">Rate!</button>
-        <p className="text-sm text-center mt-2 text-gray-500">{feedback}</p>
+        <button onClick={handleRate} disabled={!score || !userEmail || !selectedLocation} className="w-full py-3 bg-[#7b8fc7] text-white rounded-lg font-medium disabled:opacity-40 mb-3">Rate!</button>
+        <p className="text-sm text-center mb-3 text-gray-500">{feedback}</p>
+        <div className="rounded-lg bg-gray-50 border border-gray-100 p-3">
+          {STAR_LABELS.map((label, i) => (
+            <div key={i} className="flex items-center gap-2 py-0.5">
+              <span className="text-[#7b8fc7] text-sm w-20">{'★'.repeat(i + 1)}{'☆'.repeat(4 - i)}</span>
+              <span className="text-xs text-gray-500">{label}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Review form */}
