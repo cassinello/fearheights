@@ -251,7 +251,6 @@ export default function Home() {
       <div className="p-4 bg-white border-b">
         <p className="text-xs text-gray-500 uppercase tracking-wide mb-3">Fear rating</p>
 
-        {/* Stars + Rate button in same row */}
         <div className="flex items-center gap-3 mb-1">
           <div className="flex gap-1">
             {stars.map(s => (
@@ -261,7 +260,7 @@ export default function Home() {
           <button
             onClick={handleRate}
             disabled={!score || !userEmail || !selectedLocation}
-            className="px-4 py-2 bg-[#7b8fc7] text-white rounded-lg text-sm font-medium disabled:opacity-40 whitespace-nowrap"
+            className="flex-1 py-2 bg-[#7b8fc7] text-white rounded-lg text-sm font-medium disabled:opacity-40"
           >
             Rate!
           </button>
