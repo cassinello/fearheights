@@ -29,6 +29,7 @@ export default function Home() {
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [mapSrc, setMapSrc] = useState<string>(WORLD_MAP_SRC)
+  const [globalRatings, setGlobalRatings] = useState<number | null>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -47,6 +48,11 @@ export default function Home() {
         setUserAvatar(null)
       }
     })
+
+    supabase
+      .from('fear_ratings')
+      .select('*', { count: 'exact', head: true })
+      .then(({ count }) => setGlobalRatings(count ?? 0))
 
     return () => subscription.unsubscribe()
   }, [])
@@ -114,6 +120,8 @@ export default function Home() {
     setHasVoted(true)
     setFeedback(`Thank you! Your ${score} score is now registered. Leave a review below!`)
     await loadLocationData(selectedLocation)
+    const { count } = await supabase.from('fear_ratings').select('*', { count: 'exact', head: true })
+    setGlobalRatings(count ?? 0)
   }
 
   const handleSubmitReview = async () => {
@@ -193,6 +201,9 @@ export default function Home() {
             <div>
               <h1 className="text-[#f5ede0] text-lg font-semibold leading-tight">Fear Heights</h1>
               <p className="text-[#f5ede0] text-xs opacity-70">Stay grounded!</p>
+              {globalRatings !== null && (
+                <p className="text-[#f5ede0] text-xs opacity-70">{globalRatings.toLocaleString()} ratings</p>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -300,40 +311,4 @@ export default function Home() {
               <input type="file" accept="video/*" className="hidden" onChange={e => setVideoFile(e.target.files?.[0] || null)} />
             </label>
           </div>
-          <button onClick={handleSubmitReview} disabled={submitting || (!reviewText && !imageFile && !videoFile)} className="w-full mt-2 py-2 bg-[#7b8fc7] text-white rounded-lg text-sm disabled:opacity-40">
-            {submitting ? 'Submitting...' : 'Submit review'}
-          </button>
-        </div>
-      )}
-
-      {/* Reviews */}
-      {reviews.length > 0 && (
-        <div className="p-4">
-          <p className="text-sm font-medium mb-3">Reviews</p>
-          {reviews.map((r: any) => (
-            <div key={r.id} className="bg-white border rounded-xl p-3 mb-3">
-              <div className="flex justify-between items-start mb-1">
-                <div className="flex items-center gap-2">
-                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#7b8fc7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ color: 'white', fontSize: '11px', fontWeight: 'bold' }}>{r.user_email.charAt(0).toUpperCase()}</span>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">{r.user_email.split('@')[0].substring(0, 15)}</span>
-                </div>
-                <span className="text-xs text-gray-400">{new Date(r.created_at).toLocaleDateString('en-GB')}</span>
-              </div>
-              <div className="text-sm mb-1 mt-1">
-                {stars.map(s => <span key={s} className={s <= r.score ? 'text-[#7b8fc7]' : 'text-gray-200'}>★</span>)}
-                <span className="text-xs text-gray-400 ml-2 italic">{STAR_LABELS[r.score - 1]}</span>
-              </div>
-              <p className="text-sm text-gray-600">{r.review}</p>
-              <div className="flex gap-2 mt-2">
-                {r.media_url && <a href={r.media_url} target="_blank" rel="noopener noreferrer" className="text-xs border rounded px-2 py-1 text-gray-500">📷 View photo</a>}
-                {r.video_url && <a href={r.video_url} target="_blank" rel="noopener noreferrer" className="text-xs border rounded px-2 py-1 text-gray-500">▶ Watch video</a>}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </main>
-  )
-}
+          <button onClick={handleSubmitReview} disabled={submitting || (!reviewText && !imageFile &&
