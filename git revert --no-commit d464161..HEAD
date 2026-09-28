@@ -1,0 +1,24 @@
+[33m555ca2c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m add global ratings counter
+[33mf42ecb2[m fix maps with window.google
+[33m6eb55a0[m fix google maps loader
+[33m7848053[m fix maps loader
+[33m319ab0b[m Add global ratings counter to header
+[33md464161[m Rate button full width beside stars
+[33m0285579[m Stars and Rate button in same row
+[33m9a5272e[m Google OAuth login with Supabase
+[33m96d5bb8[m Bigger logo with img tag
+[33m5b3413a[m Bigger logo, X icon SVG, avatar initial
+[33mfdbe6c3[m Remove banner, add avatar initial, smaller logo
+[33ma9d1e32[m Fix image filenames
+[33mce818f2[m Add branding, world map and tagline
+[33m58ef962[m Fix all issues
+[33mea01f51[m Fix X link and improvements
+[33me15c3d5[m Fix search input, star labels, X link, map and remember user
+[33mf4e9659[m Use iframe for Google Maps
+[33m4f14426[m Fix Google Maps types
+[33mf0a2977[m Fix all string errors
+[33m440cc17[m Trigger redeploy
+[33mac86d60[m Fix string error
+[33m2894731[m Add Google Maps and star labels
+[33m6d19f11[m Initial FearHeights app
+[33mc1dad1e[m Initial commit
