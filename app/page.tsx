@@ -44,18 +44,18 @@ export default function Home() {
       version: 'weekly',
       libraries: ['places']
     })
-    const { Map, Marker } = await loader.importLibrary('maps') as any
-    const { Geocoder } = await loader.importLibrary('geocoding') as any
-    const geocoder = new Geocoder()
+    await loader.load()
+    const google = (window as any).google
+    const geocoder = new google.maps.Geocoder()
     geocoder.geocode({ address: loc }, (results: any, status: any) => {
       if (status === 'OK' && results[0]) {
-        const map = new Map(mapRef.current!, {
+        const map = new google.maps.Map(mapRef.current!, {
           center: results[0].geometry.location,
           zoom: 12,
           disableDefaultUI: true,
           zoomControl: true,
         })
-        new Marker({
+        new google.maps.Marker({
           position: results[0].geometry.location,
           map,
         })
