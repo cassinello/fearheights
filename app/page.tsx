@@ -44,7 +44,8 @@ export default function Home() {
       version: 'weekly',
       libraries: ['places']
     })
-    const google = await loader.load()
+    await loader.load()
+    const google = (window as any).google
     const geocoder = new google.maps.Geocoder()
     geocoder.geocode({ address: loc }, (results: any, status: any) => {
       if (status === 'OK' && results[0]) {
