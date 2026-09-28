@@ -20,12 +20,12 @@ export default function Home() {
   const [feedback, setFeedback] = useState('Search a location to rate it!')
   const [avgScore, setAvgScore] = useState<number | null>(null)
   const [totalRatings, setTotalRatings] = useState(0)
-  const [globalRatings, setGlobalRatings] = useState<number | null>(null)
   const [reviews, setReviews] = useState<any[]>([])
   const [reviewText, setReviewText] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [globalRatings, setGlobalRatings] = useState<number | null>(null)
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
 
@@ -44,8 +44,8 @@ export default function Home() {
       version: 'weekly',
       libraries: ['places']
     })
-    await loader.load()
-    const google = (window as any).google
+    // @ts-ignore
+    const google = await loader.load()
     const geocoder = new google.maps.Geocoder()
     geocoder.geocode({ address: loc }, (results: any, status: any) => {
       if (status === 'OK' && results[0]) {
@@ -127,8 +127,6 @@ export default function Home() {
     setHasVoted(true)
     setFeedback(`Thank you! Your ${score} score is now registered. Leave a review below!`)
     await loadLocationData(selectedLocation)
-    const { count } = await supabase.from('fear_ratings').select('*', { count: 'exact', head: true })
-    setGlobalRatings(count ?? 0)
   }
 
   const handleSubmitReview = async () => {
