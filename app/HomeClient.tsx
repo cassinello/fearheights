@@ -13,6 +13,9 @@ const STAR_LABELS = [
 
 const WORLD_MAP_SRC = `https://www.google.com/maps/embed/v1/view?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}&center=20,0&zoom=2`
 
+// Shared links always use the public domain, whichever address the visitor came in through
+const SITE_URL = 'https://www.fearheights.com'
+
 // Matches the location literally but ignoring upper/lower case
 const likeExact = (s: string) => s.replace(/[\\%_]/g, '\\$&')
 // Storage only accepts plain characters in file names: no accents, spaces or emoji
@@ -248,7 +251,7 @@ export default function HomeClient({ initialPlace = '' }: { initialPlace?: strin
     const text = label
       ? `How scary is ${selectedLocation}? "${label}" Rate it yourself 👇`
       : `How scary is ${selectedLocation}? Be the first to rate it 👇`
-    const url = window.location.origin + placeUrl(selectedLocation)
+    const url = SITE_URL + placeUrl(selectedLocation)
     window.open(`https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener,noreferrer')
   }
 
@@ -256,6 +259,7 @@ export default function HomeClient({ initialPlace = '' }: { initialPlace?: strin
   useEffect(() => {
     let place = initialPlace
     try {
+      if (!place) place = new URLSearchParams(window.location.search).get('place') || ''
       const pending = sessionStorage.getItem('fh_place')
       if (pending) {
         sessionStorage.removeItem('fh_place')
