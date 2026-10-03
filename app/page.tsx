@@ -311,4 +311,40 @@ export default function Home() {
               <input type="file" accept="video/*" className="hidden" onChange={e => setVideoFile(e.target.files?.[0] || null)} />
             </label>
           </div>
-          <button onClick={handleSubmitReview} disabled={submitting || (!reviewText && !imageFile &&
+          <button onClick={handleSubmitReview} disabled={submitting || (!reviewText && !imageFile && !videoFile)} className="w-full mt-2 py-2 bg-[#7b8fc7] text-white rounded-lg text-sm disabled:opacity-40">
+            {submitting ? 'Submitting...' : 'Submit review'}
+          </button>
+        </div>
+      )}
+
+      {/* Reviews */}
+      {reviews.length > 0 && (
+        <div className="p-4">
+          <p className="text-sm font-medium mb-3">Reviews</p>
+          {reviews.map((r: any) => (
+            <div key={r.id} className="bg-white border rounded-xl p-3 mb-3">
+              <div className="flex justify-between items-start mb-1">
+                <div className="flex items-center gap-2">
+                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#7b8fc7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ color: 'white', fontSize: '11px', fontWeight: 'bold' }}>{r.user_email.charAt(0).toUpperCase()}</span>
+                  </div>
+                  <span className="text-sm font-medium text-gray-900">{r.user_email.split('@')[0].substring(0, 15)}</span>
+                </div>
+                <span className="text-xs text-gray-400">{new Date(r.created_at).toLocaleDateString('en-GB')}</span>
+              </div>
+              <div className="text-sm mb-1 mt-1">
+                {stars.map(s => <span key={s} className={s <= r.score ? 'text-[#7b8fc7]' : 'text-gray-200'}>★</span>)}
+                <span className="text-xs text-gray-400 ml-2 italic">{STAR_LABELS[r.score - 1]}</span>
+              </div>
+              <p className="text-sm text-gray-600">{r.review}</p>
+              <div className="flex gap-2 mt-2">
+                {r.media_url && <a href={r.media_url} target="_blank" rel="noopener noreferrer" className="text-xs border rounded px-2 py-1 text-gray-500">📷 View photo</a>}
+                {r.video_url && <a href={r.video_url} target="_blank" rel="noopener noreferrer" className="text-xs border rounded px-2 py-1 text-gray-500">▶ Watch video</a>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </main>
+  )
+}
