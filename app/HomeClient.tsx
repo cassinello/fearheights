@@ -36,7 +36,6 @@ export default function HomeClient({ initialPlace = '' }: { initialPlace?: strin
   const [submitting, setSubmitting] = useState(false)
   const [mapSrc, setMapSrc] = useState<string>(WORLD_MAP_SRC)
   const [globalRatings, setGlobalRatings] = useState<number | null>(null)
-  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -253,17 +252,6 @@ export default function HomeClient({ initialPlace = '' }: { initialPlace?: strin
     window.open(`https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener,noreferrer')
   }
 
-  const copyLink = async () => {
-    if (!selectedLocation) return
-    try {
-      await navigator.clipboard.writeText(window.location.origin + placeUrl(selectedLocation))
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      setFeedback('⚠️ Could not copy the link. Copy it from the address bar.')
-    }
-  }
-
   // Open the place from the link (/?place=...) or the one saved before signing in
   useEffect(() => {
     let place = initialPlace
@@ -388,10 +376,7 @@ export default function HomeClient({ initialPlace = '' }: { initialPlace?: strin
         <p className="text-sm text-center mb-3 text-gray-500">{feedback}</p>
 
         {selectedLocation && (
-          <div className="flex gap-2 mb-3">
-            <button onClick={shareOnX} className="flex-1 py-2 border border-[#7b8fc7] text-[#7b8fc7] rounded-lg text-xs font-medium">Share on X</button>
-            <button onClick={copyLink} className="flex-1 py-2 border border-gray-300 text-gray-600 rounded-lg text-xs font-medium">{copied ? 'Link copied!' : 'Copy link'}</button>
-          </div>
+          <button onClick={shareOnX} className="w-full py-2 mb-3 border border-[#7b8fc7] text-[#7b8fc7] rounded-lg text-xs font-medium">Share on X</button>
         )}
 
         <div className="rounded-lg bg-gray-50 border border-gray-100 p-3">
