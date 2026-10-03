@@ -13,6 +13,12 @@ const STAR_LABELS = [
 
 const WORLD_MAP_SRC = `https://www.google.com/maps/embed/v1/view?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}&center=20,0&zoom=2`
 
+// Matches the location literally but ignoring upper/lower case
+const likeExact = (s: string) => s.replace(/[\\%_]/g, '\\$&')
+// Storage only accepts plain characters in file names: no accents, spaces or emoji
+const safeFileName = (name: string) =>
+  name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9._-]/g, '_')
+
 export default function Home() {
   const [location, setLocation] = useState('')
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null)
@@ -59,31 +65,37 @@ export default function Home() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!location.trim()) return
-    setSelectedLocation(location.trim())
+    const loc = location.trim().replace(/\s+/g, ' ')
+    if (!loc) return
+    setSelectedLocation(loc)
     setScore(0)
     setHasVoted(false)
     setAvgScore(null)
     setTotalRatings(0)
     setReviews([])
     setFeedback(userEmail ? 'Select stars to rate!' : 'Sign in to rate this location')
-    setMapSrc(`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}&q=${encodeURIComponent(location.trim())}&zoom=12`)
-    await loadLocationData(location.trim())
+    setMapSrc(`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}&q=${encodeURIComponent(loc)}&zoom=12`)
+    await loadLocationData(loc)
   }
 
-  const loadLocationData = async (loc: string) => {
-    const { data } = await supabase
+  const loadLocationData = async (loc: string): Promise<boolean> => {
+    const { data, error } = await supabase
       .from('fear_ratings')
       .select('*')
-      .eq('location', loc)
+      .ilike('location', likeExact(loc))
       .order('created_at', { ascending: false })
+
+    if (error) {
+      setFeedback(`⚠️ Could not load ratings: ${error.message}`)
+      return false
+    }
 
     if (data && data.length > 0) {
       const scores = data.map((r: any) => r.score)
       const avg = scores.reduce((a: number, b: number) => a + b, 0) / scores.length
       setAvgScore(Math.round(avg * 10) / 10)
       setTotalRatings(data.length)
-      setReviews(data.filter((r: any) => r.review))
+      setReviews(data.filter((r: any) => r.review || r.media_url || r.video_url))
 
       if (userEmail) {
         const userRating = data.find((r: any) => r.user_email === userEmail)
@@ -94,32 +106,41 @@ export default function Home() {
         }
       }
     }
+    return true
   }
 
   const handleRate = async () => {
     if (!userEmail || !selectedLocation || !score) return
     setFeedback('⏳ Saving your rating...')
 
-    const { data: existing } = await supabase
+    const { data: existing, error: findError } = await supabase
       .from('fear_ratings')
       .select('*')
-      .eq('location', selectedLocation)
+      .ilike('location', likeExact(selectedLocation))
       .eq('user_email', userEmail)
 
-    if (existing && existing.length > 0) {
-      await supabase
-        .from('fear_ratings')
-        .update({ score, created_at: new Date().toISOString() })
-        .eq('id', existing[0].id)
-    } else {
-      await supabase
-        .from('fear_ratings')
-        .insert({ location: selectedLocation, score, user_email: userEmail })
+    if (findError) {
+      setFeedback(`⚠️ Could not save your rating: ${findError.message}`)
+      return
+    }
+
+    const { error: saveError } = existing && existing.length > 0
+      ? await supabase
+          .from('fear_ratings')
+          .update({ score, created_at: new Date().toISOString() })
+          .eq('id', existing[0].id)
+      : await supabase
+          .from('fear_ratings')
+          .insert({ location: selectedLocation, score, user_email: userEmail })
+
+    if (saveError) {
+      setFeedback(`⚠️ Could not save your rating: ${saveError.message}`)
+      return
     }
 
     setHasVoted(true)
-    setFeedback(`Thank you! Your ${score} score is now registered. Leave a review below!`)
-    await loadLocationData(selectedLocation)
+    const loaded = await loadLocationData(selectedLocation)
+    if (loaded) setFeedback(`Thank you! Your ${score} score is now registered. Leave a review below!`)
     const { count } = await supabase.from('fear_ratings').select('*', { count: 'exact', head: true })
     setGlobalRatings(count ?? 0)
   }
@@ -129,48 +150,69 @@ export default function Home() {
     setSubmitting(true)
     setFeedback('⏳ Saving your review...')
 
-    let mediaUrl = null
-    let videoUrl = null
+    let mediaUrl: string | null = null
+    let videoUrl: string | null = null
 
     if (imageFile) {
-      const { data } = await supabase.storage
+      const { data, error } = await supabase.storage
         .from('reviews')
-        .upload(`images/${Date.now()}_${imageFile.name}`, imageFile)
-      if (data) {
-        const { data: urlData } = supabase.storage.from('reviews').getPublicUrl(data.path)
-        mediaUrl = urlData.publicUrl
+        .upload(`images/${Date.now()}_${safeFileName(imageFile.name)}`, imageFile)
+      if (error || !data) {
+        setFeedback(`⚠️ Could not upload the image: ${error?.message ?? 'unknown error'}`)
+        setSubmitting(false)
+        return
       }
+      mediaUrl = supabase.storage.from('reviews').getPublicUrl(data.path).data.publicUrl
     }
 
     if (videoFile) {
-      const { data } = await supabase.storage
+      const { data, error } = await supabase.storage
         .from('reviews')
-        .upload(`videos/${Date.now()}_${videoFile.name}`, videoFile)
-      if (data) {
-        const { data: urlData } = supabase.storage.from('reviews').getPublicUrl(data.path)
-        videoUrl = urlData.publicUrl
+        .upload(`videos/${Date.now()}_${safeFileName(videoFile.name)}`, videoFile)
+      if (error || !data) {
+        setFeedback(`⚠️ Could not upload the video: ${error?.message ?? 'unknown error'}`)
+        setSubmitting(false)
+        return
       }
+      videoUrl = supabase.storage.from('reviews').getPublicUrl(data.path).data.publicUrl
     }
 
-    const { data: existing } = await supabase
+    const { data: existing, error: findError } = await supabase
       .from('fear_ratings')
       .select('*')
-      .eq('location', selectedLocation)
+      .ilike('location', likeExact(selectedLocation))
       .eq('user_email', userEmail)
 
-    if (existing && existing.length > 0) {
-      await supabase
-        .from('fear_ratings')
-        .update({ review: reviewText, media_url: mediaUrl, video_url: videoUrl })
-        .eq('id', existing[0].id)
+    if (findError || !existing || existing.length === 0) {
+      setFeedback(`⚠️ Could not save your review: ${findError?.message ?? 'rate this place first'}`)
+      setSubmitting(false)
+      return
+    }
+
+    // Only overwrite what the user actually sent, so an earlier photo or video is not lost
+    const updates: Record<string, string> = {}
+    if (reviewText.trim()) updates.review = reviewText.trim()
+    if (mediaUrl) updates.media_url = mediaUrl
+    if (videoUrl) updates.video_url = videoUrl
+
+    const { data: saved, error: saveError } = await supabase
+      .from('fear_ratings')
+      .update(updates)
+      .eq('id', existing[0].id)
+      .select()
+
+    if (saveError || !saved || saved.length === 0) {
+      setFeedback(`⚠️ Could not save your review: ${saveError?.message ?? 'the database did not allow the update'}`)
+      setSubmitting(false)
+      return
     }
 
     setReviewText('')
     setImageFile(null)
     setVideoFile(null)
-    setFeedback('✅ Your review has been posted. Thank you!')
     setSubmitting(false)
-    await loadLocationData(selectedLocation)
+    const loaded = await loadLocationData(selectedLocation)
+    if (loaded) setFeedback('✅ Your review has been posted. Thank you!')
   }
 
   const signIn = async () => {
@@ -326,9 +368,9 @@ export default function Home() {
               <div className="flex justify-between items-start mb-1">
                 <div className="flex items-center gap-2">
                   <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#7b8fc7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ color: 'white', fontSize: '11px', fontWeight: 'bold' }}>{r.user_email.charAt(0).toUpperCase()}</span>
+                    <span style={{ color: 'white', fontSize: '11px', fontWeight: 'bold' }}>{(r.user_email || '?').charAt(0).toUpperCase()}</span>
                   </div>
-                  <span className="text-sm font-medium text-gray-900">{r.user_email.split('@')[0].substring(0, 15)}</span>
+                  <span className="text-sm font-medium text-gray-900">{(r.user_email || 'Anonymous').split('@')[0].substring(0, 15)}</span>
                 </div>
                 <span className="text-xs text-gray-400">{new Date(r.created_at).toLocaleDateString('en-GB')}</span>
               </div>
@@ -336,7 +378,7 @@ export default function Home() {
                 {stars.map(s => <span key={s} className={s <= r.score ? 'text-[#7b8fc7]' : 'text-gray-200'}>★</span>)}
                 <span className="text-xs text-gray-400 ml-2 italic">{STAR_LABELS[r.score - 1]}</span>
               </div>
-              <p className="text-sm text-gray-600">{r.review}</p>
+              {r.review && <p className="text-sm text-gray-600">{r.review}</p>}
               <div className="flex gap-2 mt-2">
                 {r.media_url && <a href={r.media_url} target="_blank" rel="noopener noreferrer" className="text-xs border rounded px-2 py-1 text-gray-500">📷 View photo</a>}
                 {r.video_url && <a href={r.video_url} target="_blank" rel="noopener noreferrer" className="text-xs border rounded px-2 py-1 text-gray-500">▶ Watch video</a>}
