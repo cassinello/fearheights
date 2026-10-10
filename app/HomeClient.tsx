@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const STAR_LABELS = [
@@ -22,7 +22,9 @@ const likeExact = (s: string) => s.replace(/[\\%_]/g, '\\$&')
 const safeFileName = (name: string) =>
   name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9._-]/g, '_')
 
-export default function HomeClient({ initialPlace = '' }: { initialPlace?: string }) {
+type Place = { id: string; name: string; address: string }
+
+export default function HomeClient({ initialPlace = '', initialPlaceId = '' }: { initialPlace?: string; initialPlaceId?: string }) {
   const [location, setLocation] = useState(initialPlace)
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null)
   const [score, setScore] = useState(0)
@@ -39,6 +41,9 @@ export default function HomeClient({ initialPlace = '' }: { initialPlace?: strin
   const [submitting, setSubmitting] = useState(false)
   const [mapSrc, setMapSrc] = useState<string>(WORLD_MAP_SRC)
   const [globalRatings, setGlobalRatings] = useState<number | null>(null)
+  const [placeId, setPlaceId] = useState<string | null>(null)
+  const [placeAddress, setPlaceAddress] = useState('')
+  const searchSeq = useRef(0)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -71,31 +76,85 @@ export default function HomeClient({ initialPlace = '' }: { initialPlace?: strin
     await runSearch(location)
   }
 
-  const runSearch = async (raw: string) => {
-    const loc = raw.trim().replace(/\s+/g, ' ')
-    if (!loc) return
-    setSelectedLocation(loc)
+  // Turns whatever the visitor typed into one specific place on Google Maps,
+  // so "scokjan cabes" and "Škocjan Caves" end up sharing the same ratings
+  const resolvePlace = async (query: string): Promise<Place | null> => {
+    try {
+      const res = await fetch(`/api/resolve?q=${encodeURIComponent(query)}`)
+      if (!res.ok) return null
+      const json = await res.json()
+      return json.place ?? null
+    } catch {
+      return null
+    }
+  }
+
+  const runSearch = async (raw: string, knownId: string | null = null) => {
+    const typed = raw.trim().replace(/\s+/g, ' ')
+    if (!typed) return
+    const seq = ++searchSeq.current
     setScore(0)
     setHasVoted(false)
     setAvgScore(null)
     setTotalRatings(0)
     setReviews([])
+    setFeedback('🔎 Looking for the place...')
+
+    // If Google cannot be reached, fall back to the text as typed (the old behaviour)
+    let place: Place = { id: knownId || '', name: typed, address: '' }
+    if (!knownId) {
+      const found = await resolvePlace(typed)
+      if (seq !== searchSeq.current) return // a newer search has started
+      if (found) place = found
+    }
+    const id = place.id || null
+
+    setLocation(place.name)
+    setSelectedLocation(place.name)
+    setPlaceId(id)
+    setPlaceAddress(place.address)
     setFeedback(userEmail ? 'Select stars to rate!' : 'Sign in to rate this location')
-    setMapSrc(`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}&q=${encodeURIComponent(loc)}&zoom=12`)
+    const mapQuery = id ? `place_id:${id}` : place.name
+    setMapSrc(`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}&q=${encodeURIComponent(mapQuery)}&zoom=12`)
     // Keep the address bar pointing at this place, so the URL itself can be shared.
     // Skipped while Supabase is still reading the sign-in code from the URL.
     if (!window.location.search.includes('code=') && !window.location.hash.includes('access_token')) {
-      window.history.replaceState(null, '', placeUrl(loc))
+      window.history.replaceState(null, '', placeUrl(place.name, id))
     }
-    await loadLocationData(loc)
+    await loadLocationData(place.name, id)
   }
 
-  const loadLocationData = async (loc: string): Promise<boolean> => {
-    const { data, error } = await supabase
-      .from('fear_ratings')
-      .select('*')
-      .ilike('location', likeExact(loc))
-      .order('created_at', { ascending: false })
+  // Ratings for a place: those saved with its Google id, plus older ones saved
+  // before ids existed under the same name. Optionally only one user's rows.
+  const queryPlaceRows = async (loc: string, id: string | null, email?: string) => {
+    let byName = supabase.from('fear_ratings').select('*').ilike('location', likeExact(loc))
+    if (id) byName = byName.is('place_id', null)
+    if (email) byName = byName.eq('user_email', email)
+    const requests = [byName]
+    if (id) {
+      let byId = supabase.from('fear_ratings').select('*').eq('place_id', id)
+      if (email) byId = byId.eq('user_email', email)
+      requests.push(byId)
+    }
+    const results = await Promise.all(requests)
+    const failed = results.find(r => r.error)
+    if (failed?.error) return { data: null, error: failed.error }
+    const seen = new Set<string>()
+    const data: any[] = []
+    for (const r of results) {
+      for (const row of r.data ?? []) {
+        if (!seen.has(String(row.id))) {
+          seen.add(String(row.id))
+          data.push(row)
+        }
+      }
+    }
+    data.sort((x, y) => String(y.created_at).localeCompare(String(x.created_at)))
+    return { data, error: null }
+  }
+
+  const loadLocationData = async (loc: string, id: string | null): Promise<boolean> => {
+    const { data, error } = await queryPlaceRows(loc, id)
 
     if (error) {
       setFeedback(`⚠️ Could not load ratings: ${error.message}`)
@@ -125,25 +184,24 @@ export default function HomeClient({ initialPlace = '' }: { initialPlace?: strin
     if (!userEmail || !selectedLocation || !score) return
     setFeedback('⏳ Saving your rating...')
 
-    const { data: existing, error: findError } = await supabase
-      .from('fear_ratings')
-      .select('*')
-      .ilike('location', likeExact(selectedLocation))
-      .eq('user_email', userEmail)
+    const { data: existing, error: findError } = await queryPlaceRows(selectedLocation, placeId, userEmail)
 
     if (findError) {
       setFeedback(`⚠️ Could not save your rating: ${findError.message}`)
       return
     }
 
+    // Save the Google id with the vote (older votes get it added when updated)
+    const placeFields = placeId ? { place_id: placeId, location: selectedLocation } : {}
+
     const { error: saveError } = existing && existing.length > 0
       ? await supabase
           .from('fear_ratings')
-          .update({ score, created_at: new Date().toISOString() })
+          .update({ score, created_at: new Date().toISOString(), ...placeFields })
           .eq('id', existing[0].id)
       : await supabase
           .from('fear_ratings')
-          .insert({ location: selectedLocation, score, user_email: userEmail })
+          .insert({ location: selectedLocation, score, user_email: userEmail, ...placeFields })
 
     if (saveError) {
       setFeedback(`⚠️ Could not save your rating: ${saveError.message}`)
@@ -151,7 +209,7 @@ export default function HomeClient({ initialPlace = '' }: { initialPlace?: strin
     }
 
     setHasVoted(true)
-    const loaded = await loadLocationData(selectedLocation)
+    const loaded = await loadLocationData(selectedLocation, placeId)
     if (loaded) setFeedback(`Thank you! Your ${score} score is now registered. Leave a review below!`)
     const { count } = await supabase.from('fear_ratings').select('*', { count: 'exact', head: true })
     setGlobalRatings(count ?? 0)
@@ -189,11 +247,7 @@ export default function HomeClient({ initialPlace = '' }: { initialPlace?: strin
       videoUrl = supabase.storage.from('reviews').getPublicUrl(data.path).data.publicUrl
     }
 
-    const { data: existing, error: findError } = await supabase
-      .from('fear_ratings')
-      .select('*')
-      .ilike('location', likeExact(selectedLocation))
-      .eq('user_email', userEmail)
+    const { data: existing, error: findError } = await queryPlaceRows(selectedLocation, placeId, userEmail)
 
     if (findError || !existing || existing.length === 0) {
       setFeedback(`⚠️ Could not save your review: ${findError?.message ?? 'rate this place first'}`)
@@ -223,13 +277,18 @@ export default function HomeClient({ initialPlace = '' }: { initialPlace?: strin
     setImageFile(null)
     setVideoFile(null)
     setSubmitting(false)
-    const loaded = await loadLocationData(selectedLocation)
+    const loaded = await loadLocationData(selectedLocation, placeId)
     if (loaded) setFeedback('✅ Your review has been posted. Thank you!')
   }
 
   const signIn = async () => {
     // Remember the place so the visitor comes back to it after signing in
-    try { if (selectedLocation) sessionStorage.setItem('fh_place', selectedLocation) } catch {}
+    try {
+      if (selectedLocation) {
+        sessionStorage.setItem('fh_place', selectedLocation)
+        sessionStorage.setItem('fh_place_id', placeId || '')
+      }
+    } catch {}
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin }
@@ -243,7 +302,8 @@ export default function HomeClient({ initialPlace = '' }: { initialPlace?: strin
     setFeedback('Search a location to rate it!')
   }
 
-  const placeUrl = (loc: string) => `/?place=${encodeURIComponent(loc)}`
+  const placeUrl = (loc: string, id: string | null) =>
+    `/?place=${encodeURIComponent(loc)}${id ? `&id=${encodeURIComponent(id)}` : ''}`
 
   const shareOnX = () => {
     if (!selectedLocation) return
@@ -251,24 +311,34 @@ export default function HomeClient({ initialPlace = '' }: { initialPlace?: strin
     const text = label
       ? `How scary is ${selectedLocation}? "${label}" Rate it yourself 👇`
       : `How scary is ${selectedLocation}? Be the first to rate it 👇`
-    const url = SITE_URL + placeUrl(selectedLocation)
+    const url = SITE_URL + placeUrl(selectedLocation, placeId)
     window.open(`https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener,noreferrer')
   }
 
   // Open the place from the link (/?place=...) or the one saved before signing in
   useEffect(() => {
     let place = initialPlace
+    let id = initialPlaceId
     try {
-      if (!place) place = new URLSearchParams(window.location.search).get('place') || ''
+      if (!place) {
+        const params = new URLSearchParams(window.location.search)
+        place = params.get('place') || ''
+        id = params.get('id') || ''
+      }
       const pending = sessionStorage.getItem('fh_place')
       if (pending) {
+        const pendingId = sessionStorage.getItem('fh_place_id') || ''
         sessionStorage.removeItem('fh_place')
-        if (!place) place = pending
+        sessionStorage.removeItem('fh_place_id')
+        if (!place) {
+          place = pending
+          id = pendingId
+        }
       }
     } catch {}
     if (place) {
       setLocation(place)
-      runSearch(place)
+      runSearch(place, id || null)
     }
   }, [])
 
@@ -276,7 +346,7 @@ export default function HomeClient({ initialPlace = '' }: { initialPlace?: strin
   useEffect(() => {
     if (userEmail && selectedLocation) {
       setFeedback('Select stars to rate!')
-      loadLocationData(selectedLocation)
+      loadLocationData(selectedLocation, placeId)
     }
   }, [userEmail])
 
@@ -354,6 +424,12 @@ export default function HomeClient({ initialPlace = '' }: { initialPlace?: strin
       {/* Rating */}
       <div className="p-4 bg-white border-b">
         <p className="text-xs text-gray-500 uppercase tracking-wide mb-3">Fear rating</p>
+        {selectedLocation && (
+          <p className="text-sm text-gray-700 mb-2">
+            📍 <span className="font-medium">{selectedLocation}</span>
+            {placeAddress && <span className="text-gray-400"> · {placeAddress}</span>}
+          </p>
+        )}
 
         <div className="flex items-center gap-3 mb-1">
           <div className="flex gap-1">

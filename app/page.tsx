@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import HomeClient from './HomeClient'
 
-type Props = { searchParams: Promise<{ place?: string | string[] }> }
+type Props = { searchParams: Promise<{ place?: string | string[]; id?: string | string[] }> }
 
 // Public address of the site. Vercel fills it in; set NEXT_PUBLIC_SITE_URL to force another one.
 const siteUrl =
@@ -13,9 +13,18 @@ const siteUrl =
 const readPlace = (value: string | string[] | undefined) =>
   ((Array.isArray(value) ? value[0] : value) || '').trim().replace(/\s+/g, ' ').slice(0, 80)
 
+// Google place ids only contain letters, digits, - and _
+const readId = (value: string | string[] | undefined) => {
+  const id = ((Array.isArray(value) ? value[0] : value) || '').trim()
+  return /^[A-Za-z0-9_-]{10,300}$/.test(id) ? id : ''
+}
+
 // Title, description and preview card (X, WhatsApp, etc.) for each place link
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const place = readPlace((await searchParams).place)
+  const params = await searchParams
+  const place = readPlace(params.place)
+  const id = place ? readId(params.id) : ''
+  const query = place ? `?place=${encodeURIComponent(place)}${id ? `&id=${id}` : ''}` : ''
 
   const title = place
     ? `How scary is ${place}? | Fear Heights`
@@ -23,8 +32,8 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const description = place
     ? `See the fear-of-heights rating for ${place}, read the reviews and add your own.`
     : 'Rate places by how much they scare you. Search any location and leave your vertigo rating and review.'
-  const path = place ? `/?place=${encodeURIComponent(place)}` : '/'
-  const image = place ? `/api/og?place=${encodeURIComponent(place)}` : '/api/og'
+  const path = `/${query}`
+  const image = `/api/og${query}`
 
   return {
     metadataBase: new URL(siteUrl),
@@ -50,6 +59,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 }
 
 export default async function Page({ searchParams }: Props) {
-  const place = readPlace((await searchParams).place)
-  return <HomeClient initialPlace={place} />
+  const params = await searchParams
+  const place = readPlace(params.place)
+  return <HomeClient initialPlace={place} initialPlaceId={place ? readId(params.id) : ''} />
 }

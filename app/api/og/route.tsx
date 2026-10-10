@@ -17,21 +17,27 @@ const STAR = 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14
 const likeExact = (s: string) => s.replace(/[\\%_]/g, '\\$&')
 
 export async function GET(request: Request) {
-  const place = (new URL(request.url).searchParams.get('place') || '')
-    .trim().replace(/\s+/g, ' ').slice(0, 80)
+  const params = new URL(request.url).searchParams
+  const place = (params.get('place') || '').trim().replace(/\s+/g, ' ').slice(0, 80)
+  const rawId = (params.get('id') || '').trim()
+  const id = /^[A-Za-z0-9_-]{10,300}$/.test(rawId) ? rawId : ''
 
   let avg: number | null = null
   let count = 0
 
   if (place) {
     try {
-      const { data } = await supabase
-        .from('fear_ratings')
-        .select('score')
-        .ilike('location', likeExact(place))
-      if (data && data.length > 0) {
-        count = data.length
-        avg = data.reduce((sum: number, r: any) => sum + r.score, 0) / count
+      // Ratings saved with the Google id, plus older ones saved by name only
+      let byName = supabase.from('fear_ratings').select('id, score').ilike('location', likeExact(place))
+      if (id) byName = byName.is('place_id', null)
+      const results = await Promise.all(
+        id ? [byName, supabase.from('fear_ratings').select('id, score').eq('place_id', id)] : [byName]
+      )
+      const rows = new Map<string, number>()
+      for (const r of results) for (const row of r.data ?? []) rows.set(String(row.id), row.score)
+      if (rows.size > 0) {
+        count = rows.size
+        avg = [...rows.values()].reduce((sum, s) => sum + s, 0) / count
       }
     } catch {
       // If the database cannot be reached, the card is drawn without a rating
