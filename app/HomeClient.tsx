@@ -44,6 +44,8 @@ export default function HomeClient({ initialPlace = '', initialPlaceId = '' }: {
   const [placeId, setPlaceId] = useState<string | null>(null)
   const [placeAddress, setPlaceAddress] = useState('')
   const searchSeq = useRef(0)
+  // Stars chosen before signing in, applied once the visitor is back and signed in
+  const pendingScore = useRef(0)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -113,7 +115,7 @@ export default function HomeClient({ initialPlace = '', initialPlaceId = '' }: {
     setSelectedLocation(place.name)
     setPlaceId(id)
     setPlaceAddress(place.address)
-    setFeedback(userEmail ? 'Select stars to rate!' : 'Sign in to rate this location')
+    setFeedback(userEmail ? 'Select stars to rate!' : 'Choose your stars and sign in to rate!')
     const mapQuery = id ? `place_id:${id}` : place.name
     setMapSrc(`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}&q=${encodeURIComponent(mapQuery)}&zoom=12`)
     // Keep the address bar pointing at this place, so the URL itself can be shared.
@@ -176,6 +178,12 @@ export default function HomeClient({ initialPlace = '', initialPlaceId = '' }: {
           setFeedback(`You already rated this place with ${userRating.score} ⭐. You can update your vote.`)
         }
       }
+    }
+    if (userEmail && pendingScore.current) {
+      const chosen = pendingScore.current
+      pendingScore.current = 0
+      setScore(chosen)
+      setFeedback(`Signed in! Tap "Rate!" to save your ${chosen} ⭐`)
     }
     return true
   }
@@ -282,16 +290,19 @@ export default function HomeClient({ initialPlace = '', initialPlaceId = '' }: {
   }
 
   const signIn = async () => {
-    // Remember the place so the visitor comes back to it after signing in
+    // Come back to the same place after signing in: it travels in the return address,
+    // with a copy in this tab as a backup
     try {
       if (selectedLocation) {
         sessionStorage.setItem('fh_place', selectedLocation)
         sessionStorage.setItem('fh_place_id', placeId || '')
+        sessionStorage.setItem('fh_score', String(score || ''))
       }
     } catch {}
+    const back = selectedLocation ? placeUrl(selectedLocation, placeId) : '/'
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin }
+      options: { redirectTo: window.location.origin + back }
     })
   }
 
@@ -328,8 +339,11 @@ export default function HomeClient({ initialPlace = '', initialPlaceId = '' }: {
       const pending = sessionStorage.getItem('fh_place')
       if (pending) {
         const pendingId = sessionStorage.getItem('fh_place_id') || ''
+        const chosen = Number(sessionStorage.getItem('fh_score'))
+        if (chosen >= 1 && chosen <= 5) pendingScore.current = chosen
         sessionStorage.removeItem('fh_place')
         sessionStorage.removeItem('fh_place_id')
+        sessionStorage.removeItem('fh_score')
         if (!place) {
           place = pending
           id = pendingId
@@ -417,9 +431,19 @@ export default function HomeClient({ initialPlace = '', initialPlaceId = '' }: {
       </form>
 
       {/* Map */}
-      <div className="h-48">
+      <div className="h-64">
         <iframe src={mapSrc} width="100%" height="100%" style={{ border: 0 }} allowFullScreen loading="lazy" />
       </div>
+      {selectedLocation && (
+        <a
+          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedLocation)}${placeId ? `&query_place_id=${encodeURIComponent(placeId)}` : ''}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-center text-xs text-[#7b8fc7] font-medium py-2 bg-white border-b"
+        >
+          Open in Google Maps ↗
+        </a>
+      )}
 
       {/* Rating */}
       <div className="p-4 bg-white border-b">
@@ -434,16 +458,26 @@ export default function HomeClient({ initialPlace = '', initialPlaceId = '' }: {
         <div className="flex items-center gap-3 mb-1">
           <div className="flex gap-1">
             {stars.map(s => (
-              <button key={s} onClick={() => userEmail && selectedLocation && setScore(s)} className={`text-3xl transition-transform hover:scale-110 ${s <= score ? 'text-[#7b8fc7]' : 'text-gray-200'}`}>★</button>
+              <button key={s} onClick={() => selectedLocation && setScore(s)} className={`text-3xl transition-transform hover:scale-110 ${s <= score ? 'text-[#7b8fc7]' : 'text-gray-200'}`}>★</button>
             ))}
           </div>
-          <button
-            onClick={handleRate}
-            disabled={!score || !userEmail || !selectedLocation}
-            className="flex-1 py-2 bg-[#7b8fc7] text-white rounded-lg text-sm font-medium disabled:opacity-40"
-          >
-            Rate!
-          </button>
+          {userEmail ? (
+            <button
+              onClick={handleRate}
+              disabled={!score || !selectedLocation}
+              className="flex-1 py-2 bg-[#7b8fc7] text-white rounded-lg text-sm font-medium disabled:opacity-40"
+            >
+              Rate!
+            </button>
+          ) : (
+            <button
+              onClick={signIn}
+              disabled={!selectedLocation}
+              className="flex-1 py-2 bg-[#7b8fc7] text-white rounded-lg text-sm font-medium disabled:opacity-40"
+            >
+              Sign in to rate
+            </button>
+          )}
         </div>
 
         {score > 0 && <p className="text-xs text-gray-500 mb-2 italic">{STAR_LABELS[score - 1]}</p>}
